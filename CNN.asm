@@ -56,52 +56,78 @@ read_input_file:
 	li $v0, 16
 	syscall
 	
-	#
+	# read N
 	la $a0, buffer
 	jal read_int
 	sw $v0, N
+	move $s0, $v1
 	
-	move $a0, $v1
+	# read M
+	move $a0, $s0
 	jal read_int
 	sw $v0, M
+	move $s0, $v1
 	
-	move $a0, $v1
+	# read p
+	move $a0, $s0
 	jal read_int
 	sw $v0, p
+	move $s0, $v1
 	
-	move $a0, $v1
+	# read s
+	move $a0, $s0
 	jal read_int
 	sw $v0, s
+	move $s0, $v1
 	
-	move $a0, $v1
-	jal read_float
-	li $v0, 2
-	syscall
-	jal print_newline
-	
-	move $a0, $v1
-	jal read_float
-	li $v0, 2
-	syscall
-	jal print_newline
-	
-	move $a0, $v1
-	jal read_float
-	li $v0, 2
-	syscall
-	jal print_newline
-	
-	move $a0, $v1
-	jal read_float
-	li $v0, 2
-	syscall
-	jal print_newline
-	
-	move $a0, $v1
-	jal read_float
-	li $v0, 2
-	syscall
-	
+	# read image matrix
+	read_image_matrix_init:
+		lw $s1, N
+		mul $s1, $s1, $s1
+		li $s2, 0
+	read_image_matrix_loop:
+		bge $s2, $s1, read_kernel_matrix_init
+		move $a0, $s0
+		jal read_float
+		move $s0, $v1
+		la $t0, image_matrix
+		move $t1, $s2
+		mul $t1, $t1, 4
+		add $t0, $t0, $t1
+		swc1 $f12, 0($t0)
+		addi $s2, $s2, 1
+		j read_image_matrix_loop
+	read_kernel_matrix_init:
+		lw $s1, M
+		mul $s1, $s1, $s1
+		li $s2, 0		
+	read_kernel_matrix_loop:
+		bge $s2, $s1, print_image_matrix_init
+		move $a0, $s0
+		jal read_float
+		move $s0, $v1
+		la $t0, kernel_matrix
+		move $t1, $s2
+		mul $t1, $t1, 4
+		add $t0, $t0, $t1
+		swc1 $f12, 0($t0)
+		addi $s2, $s2, 1
+		j read_kernel_matrix_loop
+	print_image_matrix_init:
+		li $s2, 0
+	print_image_matrix_loop:
+		bge $s2, $s1, read_input_file_ret
+		la $t0, kernel_matrix
+		move $t1, $s2
+		mul $t1, $t1, 4
+		add $t0, $t0, $t1
+		lwc1 $f12, 0($t0)
+		li $v0, 2
+		syscall
+		jal print_newline
+		addi $s2, $s2, 1
+		j print_image_matrix_loop	
+		
 	read_input_file_ret:
 		lw $ra, 0($sp)
 		lw $s0, 4($sp)
@@ -135,7 +161,7 @@ read_int:
 		li $s0, 0
 	read_int_loop:
 		lb $t1, 0($t0)
-		beq $t1, 0, read_int_null
+		beq $t1, 0, read_int_finish
 		blt $t1, 0x30, read_int_finish
 		bgt $t1, 0x39, read_int_finish
 		mul $s0, $s0, 10
@@ -186,7 +212,7 @@ read_float:
 		lwc1 $f6, float_1
 	read_float_loop:
 		lb $t1, 0($t0)
-		beq $t1, 0, read_float_null
+		beq $t1, 0, read_float_finish
 		beq $t1, 0x20, read_float_finish		# space
 		beq $t1, 0x0d, read_float_finish		# '\r'
 		beq $t1, 0x0a, read_float_finish		# '\n'
