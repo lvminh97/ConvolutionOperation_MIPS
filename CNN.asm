@@ -15,7 +15,6 @@
 .text
 main:
 	# read data
-	move $a0, $s7
 	jal read_input_file
 	
 	main_exit:
@@ -24,16 +23,13 @@ main:
 		
 # read data from input file
 read_input_file:
-	addi $sp, $sp, -36
+	addi $sp, $sp, -24
 	sw $ra, 0($sp)
 	sw $s0, 4($sp)
 	sw $s1, 8($sp)
 	sw $s2, 12($sp)
-	sw $s3, 16($sp)
-	sw $s4, 20($sp)
-	sw $s5, 24($sp)
-	sw $s6, 28($sp)
-	sw $s7, 32($sp)
+	sw $s6, 16($sp)
+	sw $s7, 20($sp)
 	
 	# open file
 	li $v0, 13
@@ -102,7 +98,7 @@ read_input_file:
 		mul $s1, $s1, $s1
 		li $s2, 0		
 	read_kernel_matrix_loop:
-		bge $s2, $s1, print_image_matrix_init
+		bge $s2, $s1, read_input_file_ret
 		move $a0, $s0
 		jal read_float
 		move $s0, $v1
@@ -113,32 +109,14 @@ read_input_file:
 		swc1 $f12, 0($t0)
 		addi $s2, $s2, 1
 		j read_kernel_matrix_loop
-	print_image_matrix_init:
-		li $s2, 0
-	print_image_matrix_loop:
-		bge $s2, $s1, read_input_file_ret
-		la $t0, kernel_matrix
-		move $t1, $s2
-		mul $t1, $t1, 4
-		add $t0, $t0, $t1
-		lwc1 $f12, 0($t0)
-		li $v0, 2
-		syscall
-		jal print_newline
-		addi $s2, $s2, 1
-		j print_image_matrix_loop	
-		
 	read_input_file_ret:
 		lw $ra, 0($sp)
 		lw $s0, 4($sp)
 		lw $s1, 8($sp)
 		lw $s2, 12($sp)
-		lw $s3, 16($sp)
-		lw $s4, 20($sp)
-		lw $s5, 24($sp)
-		lw $s6, 28($sp)
-		lw $s7, 32($sp)
-		addi $sp, $sp, 36
+		lw $s6, 16($sp)
+		lw $s7, 20($sp)
+		addi $sp, $sp, 24
 		jr $ra		
 
 read_int:
