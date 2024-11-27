@@ -49,7 +49,7 @@ vector<vector<float>> convolution(const vector<vector<float>>& input, const vect
                 }
             }
             output[i][j] = sum;
-            cout << sum << " ";
+            // cout << sum << " ";
         }
     }
 
@@ -63,8 +63,36 @@ int main()
     int p = 1;
     int s = 2;
 
-    vector<vector<float>> kernelMatrix = {{1, 1.2, -1.3, 4.5}, {-5, 3, 3.5, 6}, {-8.9, 12, 23.2, 12}, {13, -14, -15, 16}};
-    vector<vector<float>> imageMatrix = {{-3, -4, 4.5}, {6, 7.8, 12}, {5, -0.5, 12}};
+    freopen("input_matrix.txt", "r", stdin);
+
+    cin >> N >> M >> p >> s;
+
+    vector<vector<float>> kernelMatrix;
+    vector<vector<float>> imageMatrix;
+
+    for(int i = 0; i < N; i++)
+    {
+        float x;
+        vector<float> tmp;
+        for(int j = 0; j < N; j++) 
+        {
+            cin >> x;
+            tmp.push_back(x);
+        }
+        imageMatrix.push_back(tmp);
+    }
+
+    for(int i = 0; i < M; i++)
+    {
+        float x;
+        vector<float> tmp;
+        for(int j = 0; j < M; j++) 
+        {
+            cin >> x;
+            tmp.push_back(x);
+        }
+        kernelMatrix.push_back(tmp);
+    }
 
     vector<vector<float>> paddedInput = zeroPadding(imageMatrix, p);
     vector<vector<float>> outputMatrix = convolution(paddedInput, kernelMatrix, s);
