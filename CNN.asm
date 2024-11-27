@@ -1,5 +1,5 @@
 .data
-	image_matrix:		.space  	196
+	image_matrix:		.space  	900
 	kernel_matrix:		.space		64
 	input_filename:		.asciiz		"input_matrix.txt"
 	buffer:			.space		1024
@@ -7,6 +7,7 @@
 	M:			.word		0
 	p:			.word		0
 	s:			.word		0
+	newM:			.word		0
 	
 	float_0:		.float		0
 	float_1:		.float		1
@@ -16,6 +17,10 @@
 main:
 	# read data
 	jal read_input_file
+	
+	la $a0, image_matrix
+	lw $a1, newM
+	jal print_matrix
 	
 	main_exit:
 		li $v0, 10		# exit with value 0 (success)
@@ -75,30 +80,20 @@ read_input_file:
 	jal read_int
 	sw $v0, s
 	move $s0, $v1
+
+	lw $t0, M
+	lw $t1, p
+	mul $t1, $t1, 2
+	add $t0, $t0, $t1
+	sw $t0, newM
 	
-	# read image matrix
-	read_image_matrix_init:
-		lw $s1, N
-		mul $s1, $s1, $s1
-		li $s2, 0
-	read_image_matrix_loop:
-		bge $s2, $s1, read_kernel_matrix_init
-		move $a0, $s0
-		jal read_float
-		move $s0, $v1
-		la $t0, image_matrix
-		move $t1, $s2
-		mul $t1, $t1, 4
-		add $t0, $t0, $t1
-		swc1 $f12, 0($t0)
-		addi $s2, $s2, 1
-		j read_image_matrix_loop
+	# read kernel matrix
 	read_kernel_matrix_init:
-		lw $s1, M
+		lw $s1, N
 		mul $s1, $s1, $s1
 		li $s2, 0		
 	read_kernel_matrix_loop:
-		bge $s2, $s1, read_input_file_ret
+		bge $s2, $s1, read_image_matrix_init
 		move $a0, $s0
 		jal read_float
 		move $s0, $v1
@@ -109,6 +104,24 @@ read_input_file:
 		swc1 $f12, 0($t0)
 		addi $s2, $s2, 1
 		j read_kernel_matrix_loop
+	
+	# read image matrix
+	read_image_matrix_init:
+		lw $s1, M
+		mul $s1, $s1, $s1
+		li $s2, 0
+	read_image_matrix_loop:
+		bge $s2, $s1, read_input_file_ret
+		move $a0, $s0
+		jal read_float
+		move $s0, $v1
+		move $a0, $s2
+		jal compute_image_matrix_index
+		la $t0, image_matrix
+		add $t0, $t0, $v0
+		swc1 $f12, 0($t0)
+		addi $s2, $s2, 1
+		j read_image_matrix_loop
 	read_input_file_ret:
 		lw $ra, 0($sp)
 		lw $s0, 4($sp)
@@ -120,47 +133,49 @@ read_input_file:
 		jr $ra		
 
 read_int:
-	addi $sp, $sp, -8
+	addi $sp, $sp, -12
 	sw $ra, 0($sp)
 	sw $s0, 4($sp)
+	sw $s1, 8($sp)
 	
-	move $t0, $a0
+	move $s1, $a0
 	
 	read_int_trim:
-		lb $t1, 0($t0)
+		lb $t1, 0($s1)
 		beq $t1, 0, read_int_null
 		blt $t1, 0x30, read_int_trim_next
 		bgt $t1, 0x39, read_int_trim_next
 		j read_int_start
 		read_int_trim_next:
-			addi $t0, $t0, 1
+			addi $s1, $s1, 1
 			j read_int_trim	
 	read_int_start:
 		li $s0, 0
 	read_int_loop:
-		lb $t1, 0($t0)
+		lb $t1, 0($s1)
 		beq $t1, 0, read_int_finish
 		blt $t1, 0x30, read_int_finish
 		bgt $t1, 0x39, read_int_finish
 		mul $s0, $s0, 10
 		addi $t1, $t1, -0x30
 		add $s0, $s0, $t1
-		addi $t0, $t0, 1
+		addi $s1, $s1, 1
 		j read_int_loop				
 	read_int_finish:
 		move $v0, $s0
-		move $v1, $t0
+		move $v1, $s1
 		j read_int_ret
 	read_int_null:
 		li $v1, -1	
 	read_int_ret:
 		lw $ra, 0($sp)
 		lw $s0, 4($sp)
-		addi $sp, $sp, 8
+		lw $s1, 8($sp)
+		addi $sp, $sp, 12
 		jr $ra	
 
 read_float:
-	addi $sp, $sp, -32
+	addi $sp, $sp, -36
 	sw $ra, 0($sp)
 	swc1 $f0, 4($sp)
 	swc1 $f1, 8($sp)
@@ -169,18 +184,19 @@ read_float:
 	swc1 $f4, 20($sp)
 	swc1 $f5, 24($sp)
 	swc1 $f6, 28($sp)
+	sw $s0, 32($sp)
 	
-	move $t0, $a0
+	move $s0, $a0
 	
 	read_float_trim:		
-		lb $t1, 0($t0)
+		lb $t1, 0($s0)
 		beq $t1, 0, read_float_null
 		beq $t1, 0x20, read_float_trim_next		# space
 		beq $t1, 0x0d, read_float_trim_next		# '\r'
 		beq $t1, 0x0a, read_float_trim_next		# '\n'
 		j read_float_start
 		read_float_trim_next:
-			addi $t0, $t0, 1
+			addi $s0, $s0, 1
 			j read_float_trim
 	read_float_start:
 		lwc1 $f0, float_0
@@ -189,7 +205,7 @@ read_float:
 		lwc1 $f3, float_10
 		lwc1 $f6, float_1
 	read_float_loop:
-		lb $t1, 0($t0)
+		lb $t1, 0($s0)
 		beq $t1, 0, read_float_finish
 		beq $t1, 0x20, read_float_finish		# space
 		beq $t1, 0x0d, read_float_finish		# '\r'
@@ -211,7 +227,7 @@ read_float:
 		add.s $f0, $f0, $f5
 		mul.s $f2, $f2, $f3	
 	read_float_loop_next:
-		addi $t0, $t0, 1
+		addi $s0, $s0, 1
 		j read_float_loop
 	read_float_sign:
 		lwc1 $f1, float_neg1
@@ -221,7 +237,7 @@ read_float:
 		j read_float_loop_next
 	read_float_finish:
 		mul.s $f12, $f0, $f1
-		move $v1, $t0
+		move $v1, $s0
 		j read_float_ret						
 	read_float_null:
 		li $v1, -1
@@ -234,7 +250,51 @@ read_float:
 		lwc1 $f4, 20($sp)
 		lwc1 $f5, 24($sp)
 		lwc1 $f6, 28($sp)
-		addi $sp, $sp, 32
+		lw $s0, 32($sp)
+		addi $sp, $sp, 36
+		jr $ra
+
+print_matrix:
+	addi $sp, $sp, -20
+	sw $ra, 0($sp)
+	sw $s0, 4($sp)
+	sw $s1, 8($sp)
+	sw $s2, 12($sp)
+	sw $s3, 16($sp)
+	
+	move $s0, $a0		# matrix ptr
+	move $s1, $a1		# side
+	
+	print_matrix_row_init:
+		li $s2, 0
+		print_matrix_row_loop:
+			bge $s2, $s1, print_matrix_ret
+			print_matrix_col_init:
+				li $s3, 0
+				print_matrix_col_loop:
+					bge $s3, $s1, print_matrix_col_loop_finish
+					lwc1 $f12, 0($s0)
+					li $v0, 2
+					syscall
+					
+					li $a0, 0x20
+					li $v0, 11
+					syscall
+					
+					addi $s3, $s3, 1
+					addi $s0, $s0, 4
+					j print_matrix_col_loop
+				print_matrix_col_loop_finish:
+					jal print_newline
+					addi $s2, $s2, 1
+					j print_matrix_row_loop
+	print_matrix_ret:
+		lw $ra, 0($sp)
+		lw $s0, 4($sp)
+		lw $s1, 8($sp)
+		lw $s2, 12($sp)
+		lw $s3, 16($sp)
+		addi $sp, $sp, 20
 		jr $ra
 
 print_newline:
@@ -249,3 +309,25 @@ print_newline:
 		lw $ra, 0($sp)
 		addi $sp, $sp, 4
 		jr $ra
+
+compute_image_matrix_index:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+
+	move $t0, $a0
+	lw $t1, M
+	div $t0, $t1
+	mfhi $t2
+	mflo $t3
+	lw $t4, p
+	lw $t5, newM
+	add $t3, $t3, $t4
+	mul $t5, $t5, $t3
+	add $t5, $t5, $t4
+	add $t5, $t5, $t2
+	mul $t5, $t5, 4
+	move $v0, $t5
+	compute_image_matrix_index_ret:
+		lw $ra, 0($sp)
+		addi $sp, $sp, 4
+		jr $ra		
