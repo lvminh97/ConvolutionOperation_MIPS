@@ -60,11 +60,11 @@ int main()
 {
     int N = 3;
     int M = 4;
-    int p = 0;
+    int p = 1;
     int s = 2;
 
-    vector<vector<float>> imageMatrix = {{1, 1.2, -1.3, 4.5}, {-5, 3, 3.5, 6}, {-8.9, 12, 23.2, 12}, {13, -14, -15, 16}};
-    vector<vector<float>> kernelMatrix = {{-3, -4, 4.5}, {6, 7.8, 12}, {5, -0.5, 12}};
+    vector<vector<float>> kernelMatrix = {{1, 1.2, -1.3, 4.5}, {-5, 3, 3.5, 6}, {-8.9, 12, 23.2, 12}, {13, -14, -15, 16}};
+    vector<vector<float>> imageMatrix = {{-3, -4, 4.5}, {6, 7.8, 12}, {5, -0.5, 12}};
 
     vector<vector<float>> paddedInput = zeroPadding(imageMatrix, p);
     vector<vector<float>> outputMatrix = convolution(paddedInput, kernelMatrix, s);

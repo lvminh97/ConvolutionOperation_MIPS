@@ -7,7 +7,7 @@
 	M:			.word		0
 	p:			.word		0
 	s:			.word		0
-	newM:			.word		0
+	newN:			.word		0
 	
 	float_0:		.float		0
 	float_1:		.float		1
@@ -19,7 +19,7 @@ main:
 	jal read_input_file
 	
 	la $a0, image_matrix
-	lw $a1, newM
+	lw $a1, newN
 	jal print_matrix
 	
 	main_exit:
@@ -81,19 +81,37 @@ read_input_file:
 	sw $v0, s
 	move $s0, $v1
 
-	lw $t0, M
+	lw $t0, N
 	lw $t1, p
 	mul $t1, $t1, 2
 	add $t0, $t0, $t1
-	sw $t0, newM
+	sw $t0, newN
+	
+	# read image matrix
+	read_image_matrix_init:
+		lw $s1, N
+		mul $s1, $s1, $s1
+		li $s2, 0
+	read_image_matrix_loop:
+		bge $s2, $s1, read_kernel_matrix_init
+		move $a0, $s0
+		jal read_float
+		move $s0, $v1
+		move $a0, $s2
+		jal compute_input_image_matrix_index
+		la $t0, image_matrix
+		add $t0, $t0, $v0
+		swc1 $f12, 0($t0)
+		addi $s2, $s2, 1
+		j read_image_matrix_loop
 	
 	# read kernel matrix
 	read_kernel_matrix_init:
-		lw $s1, N
+		lw $s1, M
 		mul $s1, $s1, $s1
 		li $s2, 0		
 	read_kernel_matrix_loop:
-		bge $s2, $s1, read_image_matrix_init
+		bge $s2, $s1, read_input_file_ret
 		move $a0, $s0
 		jal read_float
 		move $s0, $v1
@@ -104,24 +122,6 @@ read_input_file:
 		swc1 $f12, 0($t0)
 		addi $s2, $s2, 1
 		j read_kernel_matrix_loop
-	
-	# read image matrix
-	read_image_matrix_init:
-		lw $s1, M
-		mul $s1, $s1, $s1
-		li $s2, 0
-	read_image_matrix_loop:
-		bge $s2, $s1, read_input_file_ret
-		move $a0, $s0
-		jal read_float
-		move $s0, $v1
-		move $a0, $s2
-		jal compute_image_matrix_index
-		la $t0, image_matrix
-		add $t0, $t0, $v0
-		swc1 $f12, 0($t0)
-		addi $s2, $s2, 1
-		j read_image_matrix_loop
 	read_input_file_ret:
 		lw $ra, 0($sp)
 		lw $s0, 4($sp)
@@ -310,24 +310,24 @@ print_newline:
 		addi $sp, $sp, 4
 		jr $ra
 
-compute_image_matrix_index:
+compute_input_image_matrix_index:
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
 
 	move $t0, $a0
-	lw $t1, M
+	lw $t1, N
 	div $t0, $t1
 	mfhi $t2
 	mflo $t3
 	lw $t4, p
-	lw $t5, newM
+	lw $t5, newN
 	add $t3, $t3, $t4
 	mul $t5, $t5, $t3
 	add $t5, $t5, $t4
 	add $t5, $t5, $t2
 	mul $t5, $t5, 4
 	move $v0, $t5
-	compute_image_matrix_index_ret:
+	compute_input_image_matrix_index_ret:
 		lw $ra, 0($sp)
 		addi $sp, $sp, 4
 		jr $ra		
