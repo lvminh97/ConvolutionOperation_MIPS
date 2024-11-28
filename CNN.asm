@@ -15,6 +15,8 @@
 	float_1:		.float		1
 	float_10:		.float		10
 	float_neg1:		.float		-1
+	space:			.asciiz		" "
+	newline:		.asciiz		"\n"
 .text
 main:
 	# read data
@@ -320,11 +322,18 @@ convolution:
 	lw $s0, newN
 	lw $s1, M
 	lw $s2, s
-	sub $s0, $s0, $s1	# s0 = newN - M
-	div $s0, $s0, $s2	# s0 = (newN - M) / s
-	addi $s0, $s0, 1
-	sw $s0, outN
-	lw $s7, newN
+	blt $s0, $s1, convolution_invalid
+	j convolution_valid
+	convolution_invalid:
+		li $s0, 0
+		sw $s0, outN
+		j convolution_ret
+	convolution_valid:
+		sub $s0, $s0, $s1	# s0 = newN - M
+		div $s0, $s0, $s2	# s0 = (newN - M) / s
+		addi $s0, $s0, 1
+		sw $s0, outN
+		lw $s7, newN
 	
 	convolution_loop1_init:
 		li $s3, 0
@@ -413,7 +422,6 @@ format_float:
 	swc1 $f2, 24($sp)
 	swc1 $f3, 28($sp)
 
-
 	lwc1 $f2, float_0
 	lwc1 $f3, float_neg1
 	mov.s $f0, $f12
@@ -431,13 +439,13 @@ format_float:
 		cvt.w.s $f1, $f0
 		mfc1 $s1, $f1
 	format_float_loop1:
-		div $s1, $s1, $s2
-		beq $s1, 0, format_float_loop1_finish
+		div $s1, $s2
+		mflo $t0
+		beq $t0, 0, format_float_loop1_finish
 		mul $s2, $s2, 10
 		j format_float_loop1
 	format_float_loop1_finish:
 		div $s2, $s2, 10
-		
 	format_float_loop2_init:
 		mfc1 $s1, $f1
 	format_float_loop2:
@@ -493,9 +501,6 @@ format_float:
 		sb $t0, 0($s0)
 		addi $s0, $s0, 1
 	format_float_ret:
-		li $t0, 0x20
-		sb $t0, 0($s0)
-		addi $s0, $s0, 1
 		li $t0, 0
 		sb $t0, 0($s0)
 		move $v0, $s0
@@ -524,34 +529,54 @@ write_file:
 	
 	la $a0, output_filename
 	li $a1, 1
-	li $s2, 0
+	li $a2, 0
 	li $v0, 13
 	syscall
 	move $s7, $v0		# file descriptor
 	
 	lw $s0, outN
-	mul $s0, $s0, $s0
-	li $s1, 0
-	
-	write_file_loop:
+
+	write_file_loop1_init:
+		li $s1, 0
+	write_file_loop1:		
 		bge $s1, $s0, write_file_close
-		la $t0, out
-		move $t1, $s1
-		mul $t1, $t1, 4
-		add $t0, $t0, $t1
-		lwc1 $f12, 0($t0)
-		jal format_float
-		move $s3, $v0
-		
-		move $a0, $s7
-		la $a1, buffer
-		move $a2, $s3
-		li $v0, 15
-		syscall
-		
-		addi $s1, $s1, 1
-		j write_file_loop  
-	
+		write_file_loop2_init:
+			li $s2, 0
+		write_file_loop2:
+			bge $s2, $s0, write_file_loop2_finish
+			move $a0, $s0
+			move $a1, $s1
+			move $a2, $s2
+			jal compute_matrix_index
+			la $t0, out
+			add $t0, $t0, $v0
+			lwc1 $f12, 0($t0)
+			jal format_float
+			move $s3, $v0
+			
+			move $a0, $s7
+			la $a1, buffer
+			move $a2, $s3
+			li $v0, 15
+			syscall
+			
+			move $a0, $s7
+			la $a1, space
+			li $a2, 1
+			li $v0, 15
+			syscall
+			
+			addi $s2, $s2, 1
+			j write_file_loop2
+		write_file_loop2_finish:
+			move $a0, $s7
+			la $a1, newline
+			li $a2, 1
+			li $v0, 15
+			syscall
+			
+			addi $s1, $s1, 1
+			j write_file_loop1
 	write_file_close:
 		move $a0, $s7
 		li $v0, 16
